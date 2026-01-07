@@ -52,12 +52,42 @@ selected_strategy_keys = st.sidebar.multiselect(
     help="同时满足所选所有策略的股票才会被选中"
 )
 
+with st.sidebar.expander("📖 策略说明指南"):
+    st.markdown("""
+    **技术面 (Technical)**
+    - `ma`: **均线趋势** (收盘价 > MA20 & MA5金叉)
+    - `vol`: **放量突破** (量比 > 1.5 & 涨幅 > 2%)
+    - `turn`: **活跃资金** (换手 > 5% & 非ST)
+
+    **基本面 (Fundamental)**
+    - `pe`: **低估值** (0 < PE < 30)
+    - `growth`: **高成长** (净利同比 > 20%)
+    - `roe`: **高盈利** (ROE > 15%)
+    - `debt`: **低负债** (资产负债率 < 50%)
+    """)
+
 # 3. Mode Selection
 st.sidebar.subheader("🎯 扫描范围")
 data_source_mode = st.sidebar.radio(
     "股票池来源",
     ("沪深300 (默认)", "CSV 文件导入", "快速测试 (前20只)")
 )
+
+with st.sidebar.expander("🛠 制作自定义股票池 CSV"):
+    st.caption("输入代码用分号 ';' 隔开，如: sh.600000;sz.000001")
+    user_input_codes = st.text_area("股票代码输入框", height=100)
+    if user_input_codes:
+        code_list = [c.strip() for c in user_input_codes.split(';') if c.strip()]
+        if code_list:
+            df_custom = pd.DataFrame({'code': code_list})
+            csv_data = df_custom.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 生成并下载 CSV",
+                data=csv_data,
+                file_name="custom_pool.csv",
+                mime='text/csv',
+                key='dl_custom'
+            )
 
 # --- Market Overview (New) ---
 st.subheader("📊 市场大盘 (上证指数)")
@@ -94,8 +124,8 @@ try:
                         x1=1, x2=1, y1=1, y2=0
                     )
                 ).encode(
-                    x=alt.X('date:T', title='Date'),
-                    y=alt.Y('close:Q', scale=alt.Scale(zero=False), title='Index'),
+                    x=alt.X('date:T', title='日期'),
+                    y=alt.Y('close:Q', scale=alt.Scale(zero=False), title='点位'),
                     tooltip=['date', 'close', 'pctChg']
                 ).properties(height=150)
                 st.altair_chart(chart_index, use_container_width=True)
@@ -240,49 +270,87 @@ if st.session_state.analysis_results is not None and not st.session_state.is_run
         
         # --- Visual Analysis Section ---
         st.divider()
-        st.subheader("📈 优选股可视化分析")
+        st.subheader("📈 优选股特征分布与统计")
         
-        col1, col2 = st.columns(2)
+        # Tabs for better organization
+        tab1, tab2 = st.tabs(["估值分布 (基本面)", "量价特征 (技术面)"])
         
-        with col1:
-            if 'peTTM' in df_results.columns:
-                st.caption("市盈率 (PE-TTM) 分布")
-                chart_pe = alt.Chart(df_results).mark_bar().encode(
-                    x=alt.X('peTTM', bin=True, title='PE TTM'),
-                    y='count()',
-                    tooltip=['count()']
-                ).interactive()
-                st.altair_chart(chart_pe, use_container_width=True)
-            else:
-                st.info("结果中不包含 PE 数据，无法展示分布图。")
-                
-        with col2:
-            if 'turn' in df_results.columns and 'pctChg' in df_results.columns:
-                st.caption("换手率 vs 涨跌幅")
-                chart_scatter = alt.Chart(df_results).mark_circle(size=60).encode(
-                    x=alt.X('turn', title='Turnover (%)'),
-                    y=alt.Y('pctChg', title='Change (%)'),
-                    color='strategy',
-                    tooltip=['code', 'turn', 'pctChg', 'price']
-                ).interactive()
-                st.altair_chart(chart_scatter, use_container_width=True)
-            elif 'price' in df_results.columns:
-                st.caption("股价分布")
-                chart_price = alt.Chart(df_results).mark_bar().encode(
-                x=alt.X('price', bin=True, title='Close Price'),
-                y='count()',
-                ).interactive()
-                st.altair_chart(chart_price, use_container_width=True)
+        with tab1:
+            col_val_1, col_val_2 = st.columns(2)
+            
+            with col_val_1:
+                if 'peTTM' in df_results.columns:
+                    st.markdown("**市盈率 (PE-TTM) 分布**")
+                    st.caption("反映股票估值高低，通常 <30 为合理或低估区间。")
+                    chart_pe = alt.Chart(df_results).mark_bar(color='#4c78a8').encode(
+                        x=alt.X('peTTM', bin=alt.Bin(maxbins=20), title='PE TTM'),
+                        y=alt.Y('count()', title='股票数量'),
+                        tooltip=['count()', alt.Tooltip('peTTM', bin=True, title='PE区间')]
+                    ).interactive()
+                    st.altair_chart(chart_pe, use_container_width=True)
+                else:
+                    st.info("结果中不包含 PE 数据，无法展示分布图。")
+
+            with col_val_2:
+                if 'pbMRQ' in df_results.columns:
+                    st.markdown("**市净率 (PB-MRQ) 分布**")
+                    st.caption("反映资产溢价情况，<3 通常被认为安全边际较高。")
+                    chart_pb = alt.Chart(df_results).mark_bar(color='#e45756').encode(
+                        x=alt.X('pbMRQ', bin=alt.Bin(maxbins=20), title='PB MRQ'),
+                        y=alt.Y('count()', title='股票数量'),
+                        tooltip=['count()', alt.Tooltip('pbMRQ', bin=True, title='PB区间')]
+                    ).interactive()
+                    st.altair_chart(chart_pb, use_container_width=True)
+                else:
+                    st.info("结果中不包含 PB 数据，无法展示分布图。")
+
+        with tab2:
+            col_tech_1, col_tech_2 = st.columns(2)
+            
+            with col_tech_1:
+                if 'turn' in df_results.columns and 'pctChg' in df_results.columns:
+                    st.markdown("**换手率 vs 涨跌幅**")
+                    st.caption("展示活跃度与短期表现的关系。右上角代表高活跃高涨幅。")
+                    chart_scatter = alt.Chart(df_results).mark_circle(size=60).encode(
+                        x=alt.X('turn', title='换手率 (%)'),
+                        y=alt.Y('pctChg', title='涨跌幅 (%)'),
+                        color=alt.Color('strategy', title='策略来源'),
+                        tooltip=['code', 'turn', 'pctChg', 'price']
+                    ).interactive()
+                    st.altair_chart(chart_scatter, use_container_width=True)
+                else:
+                    st.info("缺少换手率或涨跌幅数据。")
+            
+            with col_tech_2:
+                if 'price' in df_results.columns:
+                    st.markdown("**股价分布**")
+                    st.caption("筛选出股票的价格区间分布。")
+                    chart_price = alt.Chart(df_results).mark_bar(color='#f58518').encode(
+                        x=alt.X('price', bin=True, title='收盘价'),
+                        y=alt.Y('count()', title='股票数量'),
+                        tooltip=['count()']
+                    ).interactive()
+                    st.altair_chart(chart_price, use_container_width=True)
+                else:
+                    st.info("缺少价格数据。")
 
         # Detail View
-        st.subheader("🔍 个股详情查看")
-        selected_stock = st.selectbox("选择一只股票查看深度分析", df_results['code'].tolist())
+        st.subheader("🔍 个股深度透视 & 对比")
+        
+        col_sel_1, col_sel_2 = st.columns([1, 3])
+        with col_sel_1:
+            selected_stock = st.selectbox("选择一只股票查看详情", df_results['code'].tolist())
         
         if selected_stock:
-            with st.spinner("加载K线与指标计算..."):
+            # Pre-calculate averages for comparison
+            avg_pe = df_results['peTTM'].mean() if 'peTTM' in df_results.columns else 0
+            avg_pb = df_results['pbMRQ'].mean() if 'pbMRQ' in df_results.columns else 0
+            avg_turn = df_results['turn'].mean() if 'turn' in df_results.columns else 0
+
+            with st.spinner("加载K线与历史指标..."):
                 try:
                     data_provider.login()
-                    df_k = data_provider.get_daily_bars(selected_stock, date_str, lookback_days=180) # Fetch more history for indicators
+                    df_k = data_provider.get_daily_bars(selected_stock, date_str, lookback_days=180)
                 except Exception as e:
                     st.error(f"加载数据失败: {e}")
                     df_k = None
@@ -290,6 +358,38 @@ if st.session_state.analysis_results is not None and not st.session_state.is_run
                     data_provider.logout()
 
                 if df_k is not None and len(df_k) > 0:
+                    # Current metrics
+                    curr_pe = df_k.iloc[-1].get('peTTM', 0)
+                    curr_pb = df_k.iloc[-1].get('pbMRQ', 0)
+                    curr_turn = df_k.iloc[-1].get('turn', 0)
+                    
+                    # --- Comparison Metrics Row ---
+                    st.markdown("##### 📊 个股 vs 选股池均值对比")
+                    m_col1, m_col2, m_col3 = st.columns(3)
+                    
+                    with m_col1:
+                        st.metric(
+                            label="PE-TTM (市盈率)", 
+                            value=f"{curr_pe:.2f}", 
+                            delta=f"{curr_pe - avg_pe:.2f} (vs 均值 {avg_pe:.2f})",
+                            delta_color="inverse" # Lower PE is usually better (green)
+                        )
+                    with m_col2:
+                        st.metric(
+                            label="PB-MRQ (市净率)", 
+                            value=f"{curr_pb:.2f}", 
+                            delta=f"{curr_pb - avg_pb:.2f} (vs 均值 {avg_pb:.2f})",
+                            delta_color="inverse"
+                        )
+                    with m_col3:
+                        st.metric(
+                            label="换手率 (%)", 
+                            value=f"{curr_turn:.2f}%", 
+                            delta=f"{curr_turn - avg_turn:.2f}% (vs 均值 {avg_turn:.2f}%)"
+                        )
+                    
+                    st.divider()
+
                     # --- Indicator Calculation ---
                     df_k['MA5'] = df_k['close'].rolling(window=5).mean()
                     df_k['MA20'] = df_k['close'].rolling(window=20).mean()
@@ -306,42 +406,67 @@ if st.session_state.analysis_results is not None and not st.session_state.is_run
                     df_plot = df_k.tail(100).fillna(0) # Show last 100 days
                     
                     # --- Charts ---
-                    base = alt.Chart(df_plot).encode(x=alt.X('date:T', axis=alt.Axis(title='Date')))
+                    base = alt.Chart(df_plot).encode(x=alt.X('date:T', axis=alt.Axis(title='日期')))
                     
                     # 1. Price & MA Chart
-                    line_close = base.mark_line(color='black').encode(y=alt.Y('close:Q', scale=alt.Scale(zero=False), title='Price'))
+                    line_close = base.mark_line(color='black', strokeWidth=2).encode(
+                        y=alt.Y('close:Q', scale=alt.Scale(zero=False), title='价格'),
+                        tooltip=['date', 'close', 'open', 'high', 'low']
+                    )
                     line_ma5 = base.mark_line(color='#ff7f0e', strokeDash=[2,2]).encode(y='MA5', tooltip=['MA5'])
                     line_ma20 = base.mark_line(color='#2ca02c').encode(y='MA20', tooltip=['MA20'])
                     line_ma60 = base.mark_line(color='#1f77b4').encode(y='MA60', tooltip=['MA60'])
                     
-                    chart_price = (line_close + line_ma5 + line_ma20 + line_ma60).properties(height=250, title=f"股价趋势 & 均线 ({selected_stock})")
+                    chart_price = (line_close + line_ma5 + line_ma20 + line_ma60).properties(
+                        height=300, 
+                        title=f"📈 股价趋势与均线 ({selected_stock})"
+                    )
                     
                     # 2. Volume Chart
                     chart_vol = base.mark_bar(color='#9467bd').encode(
-                        y=alt.Y('volume:Q', axis=alt.Axis(title='Volume')),
+                        y=alt.Y('volume:Q', axis=alt.Axis(title='成交量')),
                         tooltip=['volume']
                     ).properties(height=100)
                     
-                    # 3. RSI Chart
+                    # 3. Valuation Trends (PE & PB) - NEW
+                    chart_pe_line = base.mark_line(color='#17becf').encode(
+                        y=alt.Y('peTTM:Q', title='PE TTM'),
+                        tooltip=['peTTM']
+                    )
+                    chart_pb_line = base.mark_line(color='#bcbd22').encode(
+                        y=alt.Y('pbMRQ:Q', title='PB MRQ'),
+                        tooltip=['pbMRQ']
+                    )
+                    
+                    chart_valuation = alt.layer(chart_pe_line, chart_pb_line).resolve_scale(
+                        y='independent'
+                    ).properties(height=150, title="估值走势 (左轴:PE, 右轴:PB)")
+
+                    # 4. RSI Chart
                     chart_rsi = base.mark_line(color='#d62728').encode(
                         y=alt.Y('RSI:Q', scale=alt.Scale(domain=[0, 100]), title='RSI')
-                    ).properties(height=100)
+                    ).properties(height=100, title="RSI 相对强弱指标")
                     
                     rsi_rule_top = base.mark_rule(color='gray', strokeDash=[4,4]).encode(y=alt.datum(70))
                     rsi_rule_bot = base.mark_rule(color='gray', strokeDash=[4,4]).encode(y=alt.datum(30))
                     
                     chart_rsi_final = chart_rsi + rsi_rule_top + rsi_rule_bot
 
-                    # Combine
-                    final_chart = alt.vconcat(chart_price, chart_vol, chart_rsi_final).resolve_scale(x='shared')
+                    # Combine all
+                    final_chart = alt.vconcat(
+                        chart_price, 
+                        chart_vol, 
+                        chart_valuation, 
+                        chart_rsi_final
+                    ).resolve_scale(x='shared')
                     
                     st.altair_chart(final_chart, use_container_width=True)
                     
-                    with st.expander("查看原始数据"):
-                        st.dataframe(df_k.tail(10))
+                    with st.expander("📊 查看详细历史数据表格"):
+                        st.dataframe(df_k.tail(20))
     else:
         st.warning(f"{st.session_state.progress_text}，但未找到符合条件的股票。")
 
 # Footer
 st.markdown("---")
-st.caption("OmniAlpha Strategy Engine v1.1 | Powered by Baostock & Streamlit")
+st.caption("OmniAlpha Strategy Engine v1.2 | Powered by Baostock & Streamlit | 此工具仅供学习研究，不构成投资建议")

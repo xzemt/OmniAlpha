@@ -5,25 +5,34 @@ class AnalysisEngine:
         self.strategies = strategies
 
     def scan_one(self, code, date):
-        """Scan a single stock with all strategies."""
+        """Scan a single stock with all strategies (Intersection / AND logic)."""
         # Fetch data once per stock
         df = data_provider.get_daily_bars(code, date)
         
         if df is None or df.empty:
             return None
-            
+        
+        combined_details = {
+            'code': code,
+            'date': date,
+            'strategy': [] # List of strategy names passed
+        }
+        
         for strategy in self.strategies:
             is_match, details = strategy.check(code, df)
             
-            if is_match:
-                res = {
-                    'code': code,
-                    'strategy': strategy.name,
-                    'date': date
-                }
-                res.update(details)
-                return res
-        return None
+            if not is_match:
+                # If ANY strategy fails, the stock is rejected (AND logic)
+                return None
+            
+            # Accumulate details and strategy names
+            combined_details['strategy'].append(strategy.name)
+            combined_details.update(details)
+            
+        # If loop finishes, all strategies matched
+        combined_details['strategy'] = ", ".join(combined_details['strategy'])
+        return combined_details
+
 
     def run(self, stock_pool, date, progress_callback=None):
         results = []

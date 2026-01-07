@@ -1,12 +1,15 @@
 from .technical import MovingAverageStrategy, VolumeRiseStrategy, HighTurnoverStrategy
-from .fundamental import LowPeStrategy
+from .fundamental import LowPeStrategy, HighGrowthStrategy, HighRoeStrategy, LowDebtStrategy
 
 # Registry of available strategies
 STRATEGY_REGISTRY = {
     'ma': MovingAverageStrategy,
     'vol': VolumeRiseStrategy,
     'turn': HighTurnoverStrategy,
-    'pe': LowPeStrategy
+    'pe': LowPeStrategy,
+    'growth': HighGrowthStrategy,
+    'roe': HighRoeStrategy,
+    'debt': LowDebtStrategy
 }
 
 def get_strategy(key):

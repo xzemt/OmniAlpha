@@ -68,5 +68,50 @@ class BaostockProvider:
                 
         return df
 
+    def _query_quarterly_data(self, query_func, code, year, quarter):
+        """
+        Helper method to query quarterly financial data.
+        """
+        self.login()
+        try:
+            rs = query_func(code=code, year=year, quarter=quarter)
+            data_list = []
+            while (rs.error_code == '0') & rs.next():
+                data_list.append(rs.get_row_data())
+            
+            if not data_list:
+                return None
+            
+            df = pd.DataFrame(data_list, columns=rs.fields)
+            return df
+        except Exception as e:
+            print(f"Error querying quarterly data for {code} {year}Q{quarter}: {e}")
+            return None
+
+    def get_profit_data(self, code, year, quarter):
+        """
+        季频盈利能力: roeAvg, npMargin, gpMargin, netProfit, etc.
+        """
+        return self._query_quarterly_data(bs.query_profit_data, code, year, quarter)
+
+    def get_operation_data(self, code, year, quarter):
+        """
+        季频营运能力: NRTurnRatio, invTurnRatio, etc.
+        """
+        return self._query_quarterly_data(bs.query_operation_data, code, year, quarter)
+
+    def get_growth_data(self, code, year, quarter):
+        """
+        季频成长能力: YOYEquity, YOYAsset, YOYNI, etc.
+        """
+        return self._query_quarterly_data(bs.query_growth_data, code, year, quarter)
+
+    def get_balance_data(self, code, year, quarter):
+        """
+        季频偿债能力: currentRatio, quickRatio, cashRatio, liabilityToAsset, etc.
+        """
+        return self._query_quarterly_data(bs.query_balance_data, code, year, quarter)
+
+
 # Singleton instance for easy access
 data_provider = BaostockProvider()
