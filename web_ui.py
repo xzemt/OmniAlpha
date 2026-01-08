@@ -3,9 +3,9 @@ import pandas as pd
 import altair as alt
 import datetime
 import time
-from core.data_provider import data_provider
+from data.baostock_provider import data_provider
 from core.engine import AnalysisEngine
-from strategies import get_strategy, get_all_strategy_keys
+from core.strategies_registry import get_strategy, get_all_strategy_keys
 
 # Page Config
 st.set_page_config(
@@ -95,7 +95,8 @@ try:
     with st.spinner("正在加载大盘数据..."):
         data_provider.login()
         # Fetch SSE Composite Index Data (sh.000001)
-        df_index = data_provider.get_daily_bars('sh.000001', date_str, lookback_days=60)
+        start_date_idx = (datetime.datetime.strptime(date_str, "%Y-%m-%d") - datetime.timedelta(days=90)).strftime("%Y-%m-%d")
+        df_index = data_provider.get_daily_bars('sh.000001', start_date_idx, date_str)
         
         if df_index is not None and not df_index.empty:
             last_idx = df_index.iloc[-1]
@@ -350,7 +351,8 @@ if st.session_state.analysis_results is not None and not st.session_state.is_run
             with st.spinner("加载K线与历史指标..."):
                 try:
                     data_provider.login()
-                    df_k = data_provider.get_daily_bars(selected_stock, date_str, lookback_days=180)
+                    start_date_k = (datetime.datetime.strptime(date_str, "%Y-%m-%d") - datetime.timedelta(days=250)).strftime("%Y-%m-%d")
+                    df_k = data_provider.get_daily_bars(selected_stock, start_date_k, date_str)
                 except Exception as e:
                     st.error(f"加载数据失败: {e}")
                     df_k = None

@@ -26,99 +26,97 @@
 
 ## 📂 项目结构 (Project Structure)
 
+*(Updated: 2026-01-08)*
+
 ```text
 BlackOil-OmniAlpha/
-├── main.py                 # 🚀 CLI 入口：命令行模式运行
-├── web_ui.py               # 🌐 Web 入口：启动图形化工作台
-├── core/                   # 🧠 核心逻辑层
-│   ├── data_provider.py    # 数据适配器 (Baostock)
-│   └── engine.py           # 策略执行引擎
-├── strategies/             # 📈 策略仓库
-│   ├── __init__.py         # 策略注册中心
-│   ├── base.py             # 策略基类接口
-│   ├── technical.py        # 技术面策略 (MA, Vol, Turn)
-│   └── fundamental.py      # 基本面策略 (PE)
-├── utils/                  # 🛠️ 工具集
-│   ├── file_io.py          # CSV 文件读写
-│   └── date_utils.py       # 日期处理
-└── requirements.txt        # 📦 项目依赖清单
+├── web_ui.py               # 🌐 **Web 选股工作台**: 基于 Streamlit 的交互式界面，用于执行策略扫描和可视化分析。
+├── main.py                 # 🚀 **主程序入口**: 用于演示因子计算与回测流程的 CLI 入口。
+├── stock_selector.py       # 🛠 **CLI 选股工具**: 命令行版本的选股器 (Legacy)。
+├── core/                   # 🧠 **核心组件层 (Core Layer)**
+│   ├── config.py           #    全局配置：定义路径、常量。
+│   ├── engine.py           #    **扫描引擎 (AnalysisEngine)**: 专为 Web UI 设计的批量选股扫描器。
+│   └── strategies_registry.py # **策略注册表**: 统一管理策略类的注册与获取，解决循环依赖。
+├── data/                   # 💾 **数据服务层 (Data Layer)**
+│   ├── baostock_provider.py # **数据提供者**: 封装 Baostock API，提供统一的行情与财报数据接口。
+│   └── store/              #    本地缓存：用于存储下载的 CSV/Parquet 数据。
+├── strategies/             # 📈 **策略实现层 (Strategy Layer)**
+│   ├── base.py             #    策略基类：定义 `StockStrategy` 接口。
+│   ├── technical.py        #    技术面策略：MA均线、放量突破、高换手等。
+│   ├── fundamental.py      #    基本面策略：低PE、高成长、高ROE、低负债等。
+│   └── __init__.py         #    包初始化。
+├── alpha/                  # 🧬 **因子挖掘层 (Alpha Layer)**
+│   ├── factors/            #    因子库：包含 GTJA191 等经典因子计算逻辑。
+│   └── mining/             #    挖掘引擎：基于遗传算法的因子挖掘框架 (预留)。
+├── backtest/               # 🔙 **回测引擎层 (Backtest Layer)**
+│   └── engine.py           #    **事件驱动引擎**: 用于历史数据的回测模拟 (Event-Driven)。
+├── llm/                    # 🤖 **大模型交互层 (LLM Layer)**
+│   └── interface.py        #    LLM 接口：用于解析自然语言指令或生成策略代码。
+└── utils/                  # 🔧 **工具库**
+    ├── date_utils.py       #    日期处理工具。
+    └── file_io.py          #    文件读写辅助。
 ```
+
+## 🏗️ 模块详解 (Module Details)
+
+### 1. 核心与工具 (Core & Utils)
+*   **`web_ui.py`**: 项目的可视化前端。调用 `core.engine.AnalysisEngine` 对股票池进行实时扫描，并使用 Altair 绘制交互式图表（K线、估值分布、RSI等）。
+*   **`core/engine.py`**: 轻量级**扫描引擎**。不同于回测引擎，它专注于在“当前时间点”对大量股票进行并行或串行的条件过滤。
+*   **`core/strategies_registry.py`**: 策略工厂模式的实现。为了解耦 `web_ui` 和 `strategies` 具体实现，通过注册表模式动态获取策略实例。
+
+### 2. 数据层 (Data)
+*   **`data/baostock_provider.py`**: 数据接入层。目前主要对接 **Baostock** 免费数据源。
+    *   `get_daily_bars`: 获取日线行情（支持复权）。
+    *   `get_profit_data` / `get_growth_data`: 获取季频财报数据（ROE、净利增长等）。
+    *   实现了单例模式，自动处理登录/登出。
+
+### 3. 策略层 (Strategies)
+*   **`strategies/technical.py`**: 包含基于价量的技术分析策略。
+    *   `MovingAverageStrategy`: 均线多头排列。
+    *   `VolumeRiseStrategy`: 量价齐升。
+*   **`strategies/fundamental.py`**: 包含基于财报的基本面分析策略。
+    *   智能推断当前日期应查询的财报季度（如5月查一季报，11月查三季报）。
+    *   `LowPeStrategy`, `HighRoeStrategy` 等。
+
+### 4. 因子与回测 (Alpha & Backtest)
+*   **`alpha/factors/gtja191.py`**: 复现了国泰君安 191 个短周期 Alpha 因子，利用 Pandas/Numpy 进行向量化计算，为机器学习挖掘提供特征库。
+*   **`backtest/engine.py`**: **回测引擎**。这是一个时间驱动的仿真器，用于在历史数据上验证策略的长期有效性，计算 Sharpe、MaxDrawdown 等指标。
 
 ---
 
-## 🛠️ 本地部署指南 (Installation)
+## 🚀 快速开始 (Quick Start)
 
-### 1. 环境准备
+### 1. 环境准备 (Prerequisites)
 确保您的系统已安装 **Python 3.8+**。
 
-### 2. 克隆项目
+### 2. 安装依赖 (Install Dependencies)
+建议使用虚拟环境管理依赖：
 ```bash
-git clone https://github.com/YourUsername/OmniAlpha.git
-cd OmniAlpha
-```
-
-### 3. 安装依赖
-建议使用虚拟环境（如 venv 或 conda）以避免依赖冲突。
-```bash
-# 创建虚拟环境 (可选)
-python -m venv venv
-source venv/bin/activate  # Mac/Linux
-# venv\Scripts\activate   # Windows
-
-# 安装核心依赖
 pip install -r requirements.txt
 ```
-*(主要依赖：`streamlit`, `baostock`, `pandas`, `altair`)*
 
----
+### 3. 运行新版演示 (Run New Architecture)
+体验完整的数据-因子-回测流程（无需任何参数）：
+```bash
+python main.py
+```
+*功能：自动获取 HS300 成分股数据 -> 计算 GTJA191 因子 -> 执行基础回测演示。*
 
-## 🚀 使用说明 (Usage)
-
-### 方式一：Web 图形化工作台 (推荐)
-适合直观地进行选股、复盘和图表分析。
-
-1.  **启动服务**:
-    ```bash
-    streamlit run web_ui.py
-    ```
-2.  **浏览器访问**:
-    服务启动后，自动打开浏览器访问 `http://localhost:8501`。
-3.  **操作流程**:
-    *   **顶部**: 查看 **沪深300指数** 当日走势，判断市场冷暖。
-    *   **左侧栏**:
-        *   **日期**: 选择回测或复盘的日期。
-        *   **策略**: 勾选需要的策略（如同时勾选 `ma` 和 `pe`，系统会筛选出既符合均线多头又低估值的股票）。
-        *   **来源**: 选择“沪深300”全扫描，或上传 CSV 文件进行二次筛选。
-    *   **执行**: 点击 **“🚀 开始分析”**。支持随时点击 **“🛑 停止分析”** 查看已跑出的结果。
-    *   **分析**:
-        *   查看选股结果列表、PE 分布图、换手率散点图。
-        *   点击列表中任意股票，底部自动展示 **K线 + 均线 + 成交量 + RSI** 组合图表。
-
-### 方式二：CLI 命令行模式
-适合脚本自动化或服务器后台运行。
-
-*   **快速测试**:
-    ```bash
-    python main.py --quick --strategies ma,pe
-    ```
-*   **全量扫描**:
-    ```bash
-    python main.py --strategies ma,vol,turn
-    ```
-*   **管道模式 (CSV导入)**:
-    ```bash
-    python main.py --file my_stock_pool.csv --strategies pe
-    ```
+### 4. 运行可视化工作台 (Legacy)
+启动基于 Streamlit 的 Web 界面进行选股分析（正在适配新架构）：
+```bash
+streamlit run web_ui.py
+```
 
 ---
 
 ## 📅 项目规划 (Roadmap)
 
-*   [x] **Phase 1**: 核心引擎重构与模块化。
-*   [x] **Phase 2**: 集成 Baostock 数据源，实现基础策略库。
-*   [x] **Phase 3**: **Web UI 工作台上线**，支持可视化交互与深度图表。
-*   [ ] **Phase 4**: 接入 Backtrader 回测框架，验证选股结果的胜率。
-*   [ ] **Phase 5**: 接入 LLM (大模型) 接口，实现基于新闻情绪的因子加权。
+*   [x] **Phase 1**: 核心引擎重构与模块化 (Completed 2026-01-08)。
+*   [x] **Phase 2**: 建立 Data-Alpha-Backtest 分层架构 (Completed 2026-01-08)。
+*   [ ] **Phase 3**: 完善 `BacktestEngine`，实现真实的撮合逻辑与绩效统计。
+*   [ ] **Phase 4**: 实现 `GeneticMiner`，跑通第一个自动挖掘的 Alpha 因子。
+*   [ ] **Phase 5**: 接入 LLM，实现 "Text-to-Strategy" 自动代码生成。
 
 ---
 
