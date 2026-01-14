@@ -30,43 +30,105 @@ class BaostockProvider:
 
     def get_daily_bars(self, code, start_date, end_date):
         """
-        Fetch daily bars. 
-        TODO: Implement caching to DATA_DIR.
+        获取日线数据。
+        优先读取本地缓存 (DATA_DIR/daily/{code}.csv)，若数据缺失则增量下载。
         """
-        self.login()
-        # Ensure dates are strings
+        # 0. 准备路径和文件夹
+        daily_dir = os.path.join(DATA_DIR, "daily")
+        os.makedirs(daily_dir, exist_ok=True)
+        file_path = os.path.join(daily_dir, f"{code}.csv")
         
-        rs = bs.query_history_k_data_plus(code,
-            "date,code,open,high,low,close,volume,amount,pctChg,peTTM,pbMRQ,turn,isST",
-            start_date=start_date, end_date=end_date,
-            frequency="d", adjustflag="3")
+        df_cache = pd.DataFrame()
         
-        data_list = []
-        while (rs.error_code == '0') & rs.next():
-            data_list.append(rs.get_row_data())
-            
-        if not data_list:
-            return pd.DataFrame()
+        # 1. 尝试读取缓存
+        if os.path.exists(file_path):
+            try:
+                df_cache = pd.read_csv(file_path, dtype={'code': str})
+                if 'date' in df_cache.columns:
+                    df_cache['date'] = df_cache['date'].astype(str)
+                    df_cache = df_cache.sort_values('date')
+            except Exception as e:
+                print(f"[Warn] Error reading cache for {code}: {e}")
+                df_cache = pd.DataFrame()
 
-        df = pd.DataFrame(data_list, columns=rs.fields)
+        # 2. 确定下载范围
+        fetch_start = start_date
+        fetch_end = end_date
+        need_download = True
         
-        # Convert numeric columns
-        numeric_cols = ['open', 'high', 'low', 'close', 'volume', 'amount', 'pctChg', 'peTTM', 'pbMRQ', 'turn']
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+        if not df_cache.empty:
+            cache_start = df_cache['date'].min()
+            cache_end = df_cache['date'].max()
+            
+            # 如果请求的开始时间早于缓存，这里简单处理：重新下载全部（保证数据连续性）
+            if start_date < cache_start:
+                need_download = True
+                fetch_start = start_date 
+            elif end_date <= cache_end:
+                 # 请求范围完全在缓存内
+                 need_download = False
+            else:
+                 # 只要下载尾部增量
+                 try:
+                     last_dt = datetime.datetime.strptime(cache_end, "%Y-%m-%d")
+                     next_dt = last_dt + datetime.timedelta(days=1)
+                     fetch_start = next_dt.strftime("%Y-%m-%d")
+                     if fetch_start > fetch_end:
+                         need_download = False
+                 except:
+                     fetch_start = start_date
         
-        # Calculate VWAP if not present (approximate)
-        if 'amount' in df.columns and 'volume' in df.columns:
-             # Baostock volume is in shares, amount in Yuan.
-             # Sometimes volume is 0.
-             df['vwap'] = df.apply(lambda row: row['amount'] / row['volume'] if row['volume'] > 0 else row['close'], axis=1)
-        
-        return df
+        # 3. 下载数据 (如果需要)
+        if need_download:
+            self.login()
+            # print(f"Downloading {code} from {fetch_start} to {fetch_end}...")
+            
+            rs = bs.query_history_k_data_plus(code,
+                "date,code,open,high,low,close,volume,amount,pctChg,peTTM,pbMRQ,turn,isST",
+                start_date=fetch_start, end_date=fetch_end,
+                frequency="d", adjustflag="3")
+            
+            data_list = []
+            while (rs.error_code == '0') & rs.next():
+                data_list.append(rs.get_row_data())
+            
+            if data_list:
+                df_new = pd.DataFrame(data_list, columns=rs.fields)
+                
+                # 转换数值列
+                numeric_cols = ['open', 'high', 'low', 'close', 'volume', 'amount', 'pctChg', 'peTTM', 'pbMRQ', 'turn']
+                for col in numeric_cols:
+                    if col in df_new.columns:
+                        df_new[col] = pd.to_numeric(df_new[col], errors='coerce')
+                
+                # 计算 VWAP
+                if 'amount' in df_new.columns and 'volume' in df_new.columns:
+                     df_new['vwap'] = df_new.apply(lambda row: row['amount'] / row['volume'] if row['volume'] > 0 else row['close'], axis=1)
+
+                # 合并缓存
+                if not df_cache.empty:
+                    df_final = pd.concat([df_cache, df_new], ignore_index=True)
+                    df_final.drop_duplicates(subset=['date'], inplace=True, keep='last')
+                    df_final.sort_values('date', inplace=True)
+                else:
+                    df_final = df_new
+                
+                # 保存回 CSV
+                df_final.to_csv(file_path, index=False)
+                df_cache = df_final
+            else:
+                pass # 没有新数据下载
+                
+        # 4. 返回过滤后的数据
+        if df_cache.empty:
+            return pd.DataFrame()
+            
+        mask = (df_cache['date'] >= start_date) & (df_cache['date'] <= end_date)
+        return df_cache.loc[mask].copy().reset_index(drop=True)
 
     def _query_quarterly_data(self, query_func, code, year, quarter):
         """
-        Helper method to query quarterly financial data.
+        查询季度财务数据的辅助方法。
         """
         self.login()
         try:
