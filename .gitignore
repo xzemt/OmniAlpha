@@ -171,3 +171,16 @@ quick_demo_output.log
 rigorous_test_final.log
 rigorous_test_output.log
 training_output.log
+
+# Frontend
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# Data & Cache
+data/store/
+data/daily/
+.claude/
