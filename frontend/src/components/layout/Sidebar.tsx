@@ -2,6 +2,7 @@ import React from 'react';
 import { Home, TrendingUp, BarChart2, Cpu, Settings } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface SidebarProps {
   className?: string;
@@ -9,13 +10,14 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ className }) => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const navItems = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Technical Selection', path: '/technical', icon: TrendingUp },
-    { name: 'Alpha Selection', path: '/alpha', icon: BarChart2 },
-    { name: 'AI Selection', path: '/ai', icon: Cpu },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: t('nav.home'), path: '/', icon: Home },
+    { name: t('nav.technical'), path: '/technical', icon: TrendingUp },
+    { name: t('nav.alpha'), path: '/alpha', icon: BarChart2 },
+    { name: t('nav.ai'), path: '/ai', icon: Cpu },
+    { name: t('nav.settings'), path: '/settings', icon: Settings },
   ];
 
   return (
@@ -30,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
             return (
-              <li key={item.name}>
+              <li key={item.path}>
                 <Link
                   to={item.path}
                   className={clsx(
@@ -52,8 +54,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
             U
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium">User</p>
-            <p className="text-xs text-gray-400">Admin</p>
+            <p className="text-sm font-medium">{t('user.name')}</p>
+            <p className="text-xs text-gray-400">{t('user.role')}</p>
           </div>
         </div>
       </div>

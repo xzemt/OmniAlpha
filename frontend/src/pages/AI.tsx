@@ -45,7 +45,10 @@ const AI: React.FC = () => {
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg.content })
+        body: JSON.stringify({ 
+            message: userMsg.content,
+            history: messages // Send full history
+        })
       });
 
       if (!response.ok) throw new Error(response.statusText);
@@ -77,16 +80,25 @@ const AI: React.FC = () => {
             const data = line.slice(6);
             if (data === '[DONE]') break;
             
-            accumulatedContent += data + ' ';
-            
-            setMessages(prev => {
-              const newMsgs = [...prev];
-              newMsgs[newMsgs.length - 1] = {
-                ...newMsgs[newMsgs.length - 1],
-                content: accumulatedContent
-              };
-              return newMsgs;
-            });
+            try {
+                // Parse JSON chunk {content: "..."}
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                    accumulatedContent += parsed.content;
+                    
+                    setMessages(prev => {
+                      const newMsgs = [...prev];
+                      newMsgs[newMsgs.length - 1] = {
+                        ...newMsgs[newMsgs.length - 1],
+                        content: accumulatedContent
+                      };
+                      return newMsgs;
+                    });
+                }
+            } catch (e) {
+                // Backward compatibility or raw text
+                console.warn("Failed to parse chunk", e);
+            }
           }
         }
       }

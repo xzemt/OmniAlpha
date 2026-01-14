@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.api import market, strategies, scan, stock, alpha, ai
+from backend.app.api import market, strategies, scan, stock, alpha, ai, settings
 import uvicorn
 import os
 
@@ -32,6 +32,7 @@ app.include_router(scan.router, prefix="/api/scan", tags=["Scan"])
 app.include_router(stock.router, prefix="/api/stock", tags=["Stock"])
 app.include_router(alpha.router, prefix="/api/alpha", tags=["Alpha"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 
 @app.get("/")
 async def root():
