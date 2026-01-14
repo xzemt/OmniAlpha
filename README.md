@@ -116,6 +116,14 @@ BlackOil-OmniAlpha/
     *   当您看到类似 `ready in ... ms` 并且提示 `Local: http://localhost:5173/` 的输出时，表示前端开发服务器已成功启动。
     *   现在，打开您的浏览器，访问 `http://localhost:5173` 即可打开 OmniAlpha 工作台，并开始使用新的重构页面。
 
+**常见问题排查 (Troubleshooting)**:
+
+如果您在运行 `npm run dev` 时遇到 `npm error Missing script: "dev"` 错误，请检查以下两点：
+1.  **确认当前目录**：确保您已经通过 `cd frontend` 命令进入了 `frontend/` 目录。
+2.  **安装依赖**：确保您已成功运行 `npm install` 来安装所有前端项目依赖。如果 `node_modules` 目录不存在或不完整，该命令会失败。
+
+
+
 ---
 
 ## 🏗️ 核心模块 (Core Modules)
