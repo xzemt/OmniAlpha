@@ -2,12 +2,15 @@
 
 **OmniAlpha** 是一个专为 A 股市场设计的模块化量化交易平台。它不仅集成了实时行情获取、历史回测和模拟盘执行，更核心的突破在于其**双循环架构**：内置基于遗传算法与强化学习的 **AlphaGen 因子挖掘工厂**，并预留了 **LLM（大语言模型）** 接口，用于语义情感分析与策略自动化生成。
 
+**新架构 (v2.0)**: 采用 **FastAPI (后端)** + **React (前端)** 的前后端分离架构，提供更专业、流畅的交互体验。
+
 ## 🌟 核心特性
 
-*   **🖥️ 可视化工作台**: 基于 Streamlit 打造的交互式 Web 界面，支持大盘监控、策略组合选股、结果可视化分析。
+*   **🖥️ 现代化工作台**: 基于 **React + Tailwind CSS** 打造的全新 Web 界面，支持 AI 智能选股、Alpha 因子分析、多策略扫描。
+*   **🚀 高性能后端**: 基于 **FastAPI** 的异步 API 服务，支持流式响应（Streaming Response）处理耗时扫描任务。
 *   **🛠️ 模块化架构**: 采用依赖倒置设计，Data Provider、Strategy、Engine 高度解耦，方便扩展。
 *   **📈 多维度策略**: 内置均线趋势、放量突破、低估值、高换手等多种实战策略，支持自由组合。
-*   **🔍 深度个股诊断**: 自动计算 MA5/20/60、RSI 等指标，提供量价时空全方位图表分析。
+*   **🤖 AI 赋能**: 集成 LLM 对话接口，支持自然语言选股 ("帮我找一下最近缩量下跌的股票")。
 
 ## 📚 策略库 (Strategy Library)
 
@@ -26,104 +29,118 @@
 
 ## 📂 项目结构 (Project Structure)
 
-*(Updated: 2026-01-08)*
+*(Updated: 2026-01-14)*
 
 ```text
 BlackOil-OmniAlpha/
-├── web_ui.py               # 🌐 **Web 选股工作台**: 基于 Streamlit 的交互式界面，用于执行策略扫描和可视化分析。
-├── main.py                 # 🚀 **主程序入口**: 用于演示因子计算与回测流程的 CLI 入口。
-├── stock_selector.py       # 🛠 **CLI 选股工具**: 命令行版本的选股器 (Legacy)。
-├── core/                   # 🧠 **核心组件层 (Core Layer)**
-│   ├── config.py           #    全局配置：定义路径、常量。
-│   ├── engine.py           #    **扫描引擎 (AnalysisEngine)**: 专为 Web UI 设计的批量选股扫描器。
-│   └── strategies_registry.py # **策略注册表**: 统一管理策略类的注册与获取，解决循环依赖。
-├── data/                   # 💾 **数据服务层 (Data Layer)**
-│   ├── baostock_provider.py # **数据提供者**: 封装 Baostock API，提供统一的行情与财报数据接口。
-│   └── store/              #    本地缓存：用于存储下载的 CSV/Parquet 数据。
-├── strategies/             # 📈 **策略实现层 (Strategy Layer)**
-│   ├── base.py             #    策略基类：定义 `StockStrategy` 接口。
-│   ├── technical.py        #    技术面策略：MA均线、放量突破、高换手等。
-│   ├── fundamental.py      #    基本面策略：低PE、高成长、高ROE、低负债等。
-│   └── __init__.py         #    包初始化。
-├── alpha/                  # 🧬 **因子挖掘层 (Alpha Layer)**
-│   ├── factors/            #    因子库：包含 GTJA191 等经典因子计算逻辑。
-│   └── mining/             #    挖掘引擎：基于遗传算法的因子挖掘框架 (预留)。
-├── backtest/               # 🔙 **回测引擎层 (Backtest Layer)**
-│   └── engine.py           #    **事件驱动引擎**: 用于历史数据的回测模拟 (Event-Driven)。
-├── llm/                    # 🤖 **大模型交互层 (LLM Layer)**
-│   └── interface.py        #    LLM 接口：用于解析自然语言指令或生成策略代码。
-└── utils/                  # 🔧 **工具库**
-    ├── date_utils.py       #    日期处理工具。
-    └── file_io.py          #    文件读写辅助。
+├── backend/                # 🐍 **后端服务 (FastAPI)**
+│   ├── app/
+│   │   ├── api/            # API 路由定义 (market, stock, scan, ai, alpha)
+│   │   ├── core/           # 核心配置与工具
+│   │   └── main.py         # FastAPI 应用入口
+│   ├── core/               # 复用的核心逻辑 (Engine, Strategies)
+│   ├── data/               # 数据层 (Baostock Provider)
+│   ├── strategies/         # 策略实现层 (Technical, Fundamental)
+│   └── alpha/              # 因子挖掘层
+├── frontend/               # ⚛️ **前端应用 (React + Vite)**
+│   ├── src/
+│   │   ├── api/            # API 客户端封装
+│   │   ├── components/     # 公共组件 (Layout, Sidebar, Header)
+│   │   ├── pages/          # 页面视图 (Home, Technical, Alpha, AI, StockDetail)
+│   │   └── ...
+│   └── ...
+├── data/                   # 💾 **数据存储** (本地缓存的 CSV/Parquet)
+├── logs/                   # 📝 **运行日志**
+└── README.md               # 📄 项目文档
 ```
-
-## 🏗️ 模块详解 (Module Details)
-
-### 1. 核心与工具 (Core & Utils)
-*   **`web_ui.py`**: 项目的可视化前端。调用 `core.engine.AnalysisEngine` 对股票池进行实时扫描，并使用 Altair 绘制交互式图表（K线、估值分布、RSI等）。
-*   **`core/engine.py`**: 轻量级**扫描引擎**。不同于回测引擎，它专注于在“当前时间点”对大量股票进行并行或串行的条件过滤。
-*   **`core/strategies_registry.py`**: 策略工厂模式的实现。为了解耦 `web_ui` 和 `strategies` 具体实现，通过注册表模式动态获取策略实例。
-
-### 2. 数据层 (Data)
-*   **`data/baostock_provider.py`**: 数据接入层。目前主要对接 **Baostock** 免费数据源。
-    *   `get_daily_bars`: 获取日线行情（支持复权）。
-    *   `get_profit_data` / `get_growth_data`: 获取季频财报数据（ROE、净利增长等）。
-    *   实现了单例模式，自动处理登录/登出。
-
-### 3. 策略层 (Strategies)
-*   **`strategies/technical.py`**: 包含基于价量的技术分析策略。
-    *   `MovingAverageStrategy`: 均线多头排列。
-    *   `VolumeRiseStrategy`: 量价齐升。
-*   **`strategies/fundamental.py`**: 包含基于财报的基本面分析策略。
-    *   智能推断当前日期应查询的财报季度（如5月查一季报，11月查三季报）。
-    *   `LowPeStrategy`, `HighRoeStrategy` 等。
-
-### 4. 因子与回测 (Alpha & Backtest)
-*   **`alpha/factors/gtja191.py`**: 复现了国泰君安 191 个短周期 Alpha 因子，利用 Pandas/Numpy 进行向量化计算，为机器学习挖掘提供特征库。
-*   **`backtest/engine.py`**: **回测引擎**。这是一个时间驱动的仿真器，用于在历史数据上验证策略的长期有效性，计算 Sharpe、MaxDrawdown 等指标。
-
----
 
 ## 🚀 快速开始 (Quick Start)
 
+为了顺利运行 OmniAlpha，请遵循以下详细步骤：
+
 ### 1. 环境准备 (Prerequisites)
-确保您的系统已安装 **Python 3.8+**。
 
-### 2. 安装依赖 (Install Dependencies)
-建议使用虚拟环境管理依赖：
-```bash
-pip install -r requirements.txt
-```
+在开始之前，请确保您的开发环境中已安装以下软件：
 
-### 3. 运行新版演示 (Run New Architecture)
-体验完整的数据-因子-回测流程（无需任何参数）：
-```bash
-python main.py
-```
-*功能：自动获取 HS300 成分股数据 -> 计算 GTJA191 因子 -> 执行基础回测演示。*
+*   **Python**: 版本 3.8 或更高。推荐使用 `pyenv` 或 `conda` 进行 Python 版本管理。
+*   **Node.js**: 版本 16 或更高。Node.js 环境包含了 `npm` (Node Package Manager)。您也可以使用 `yarn` 或 `pnpm` 作为替代包管理器。
 
-### 4. 运行可视化工作台 (Legacy)
-启动基于 Streamlit 的 Web 界面进行选股分析（正在适配新架构）：
-```bash
-streamlit run web_ui.py
-```
+### 2. 后端服务启动 (Backend Service)
+
+后端服务使用 Python 和 FastAPI 构建。
+
+1.  **打开第一个终端**：导航到项目的根目录（即包含 `backend/` 文件夹的目录）。
+    ```bash
+    # 示例：如果您当前在其他目录，请cd到项目根目录
+    cd /Users/comedian/Code/BlackOil-OmniAlpha
+    ```
+2.  **创建并激活 Python 虚拟环境 (推荐)**：
+    ```bash
+    python -m venv venv_backend
+    source venv_backend/bin/activate # macOS/Linux
+    # 或 venv_backend\Scripts\activate # Windows
+    ```
+3.  **安装 Python 依赖**：
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **启动 FastAPI 服务**：
+    ```bash
+    uvicorn backend.app.main:app --reload --port 8000
+    ```
+    *   `--reload` 参数会在代码文件发生变化时自动重启服务，方便开发。
+    *   `--port 8000` 指定服务运行在 8000 端口。
+    *   当您看到类似 `Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)` 的输出时，表示后端服务已成功启动。
+    *   您可以通过访问 `http://localhost:8000/docs` 查看 API 文档 (Swagger UI)。
+
+### 3. 前端应用启动 (Frontend Application)
+
+前端应用使用 React、Vite 和 Tailwind CSS 构建。
+
+1.  **打开第二个终端**：导航到 `frontend/` 目录。
+    ```bash
+    # 确保您在项目根目录，然后进入frontend
+    cd frontend
+    ```
+2.  **安装 Node.js 依赖**：
+    根据您的偏好，选择以下任一命令安装依赖：
+    ```bash
+    npm install
+    # 或 pnpm install
+    # 或 yarn install
+    ```
+3.  **启动前端开发服务器**：
+    ```bash
+    npm run dev
+    ```
+    *   当您看到类似 `ready in ... ms` 并且提示 `Local: http://localhost:5173/` 的输出时，表示前端开发服务器已成功启动。
+    *   现在，打开您的浏览器，访问 `http://localhost:5173` 即可打开 OmniAlpha 工作台，并开始使用新的重构页面。
+
+---
+
+## 🏗️ 核心模块 (Core Modules)
+
+### 1. Technical (技术选股)
+复刻并增强了原有的筛选逻辑，支持在前端勾选多种策略组合，通过 WebSocket/Stream 实时接收扫描进度与结果。
+
+### 2. Alpha (因子分析)
+基于 `alpha/` 目录下的因子库（如 GTJA191），提供因子计算器与分布可视化功能，辅助量化因子挖掘。
+
+### 3. AI (智能助手)
+通过 `llm/` 接口对接大语言模型，提供对话式交互体验，支持语义选股与策略解释。
 
 ---
 
 ## 📅 项目规划 (Roadmap)
 
-*   [x] **Phase 1**: 核心引擎重构与模块化 (Completed 2026-01-08)。
-*   [x] **Phase 2**: 建立 Data-Alpha-Backtest 分层架构 (Completed 2026-01-08)。
-*   [ ] **Phase 3**: 完善 `BacktestEngine`，实现真实的撮合逻辑与绩效统计。
-*   [ ] **Phase 4**: 实现 `GeneticMiner`，跑通第一个自动挖掘的 Alpha 因子。
-*   [ ] **Phase 5**: 接入 LLM，实现 "Text-to-Strategy" 自动代码生成。
+*   [x] **Phase 1**: 核心引擎重构与模块化。
+*   [x] **Phase 2**: 建立 Data-Alpha-Backtest 分层架构。
+*   [x] **Phase 3**: **架构重构**: 迁移至 FastAPI + React 前后端分离架构 (Completed 2026-01-14)。
+*   [ ] **Phase 4**: 完善 `BacktestEngine`，实现真实的撮合逻辑与绩效统计。
+*   [ ] **Phase 5**: 完善 AI 模块，实现 "Text-to-Strategy" 自动代码生成。
 
 ---
 
 ## 🤝 贡献与反馈
 
 欢迎提交 Issue 或 Pull Request！
-*   **策略贡献**: 请在 `strategies/` 目录下添加新的策略类，并在 `__init__.py` 中注册。
-*   **Bug 反馈**: 请附上详细的报错信息和复现步骤。
-
----

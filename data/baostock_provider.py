@@ -24,7 +24,8 @@ class BaostockProvider:
         rs = bs.query_hs300_stocks(date=date)
         hs300_stocks = []
         while (rs.error_code == '0') & rs.next():
-            hs300_stocks.append(rs.get_row_data()[1])
+            row = rs.get_row_data()
+            hs300_stocks.append({'code': row[1], 'name': row[2]})
         return hs300_stocks
 
     def get_daily_bars(self, code, start_date, end_date):
