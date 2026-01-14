@@ -1,6 +1,6 @@
 import pandas as pd
 from multiprocessing import Pool
-from datas import *
+from .datas import *
 import os
 import traceback
 import time
