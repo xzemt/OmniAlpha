@@ -173,6 +173,7 @@ rigorous_test_output.log
 training_output.log
 
 # Frontend
+frontend/node_modules/
 node_modules/
 dist/
 npm-debug.log*
