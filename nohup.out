@@ -1,0 +1,13 @@
+INFO:     Started server process [4246]
+INFO:     Waiting for application startup.
+2026-01-16 04:14:05 [    INFO] backend.app.main - ============================================================
+2026-01-16 04:14:05 [    INFO] backend.app.main - OmniAlpha API 启动成功
+2026-01-16 04:14:05 [    INFO] backend.app.main - Docs: http://localhost:8000/docs
+2026-01-16 04:14:05 [    INFO] backend.app.main - ============================================================
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8000): [errno 48] address already in use
+INFO:     Waiting for application shutdown.
+2026-01-16 04:14:05 [    INFO] backend.app.main - ============================================================
+2026-01-16 04:14:05 [    INFO] backend.app.main - OmniAlpha API 已关闭
+2026-01-16 04:14:05 [    INFO] backend.app.main - ============================================================
+INFO:     Application shutdown complete.

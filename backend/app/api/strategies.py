@@ -4,7 +4,7 @@ from core.strategies_registry import STRATEGY_REGISTRY, get_strategy
 
 router = APIRouter()
 
-@router.get("/", response_model=List[Dict[str, str]])
+@router.get("", response_model=List[Dict[str, str]])
 async def get_strategies():
     """
     Get list of available strategies with metadata.

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -8,16 +9,31 @@ interface Message {
 }
 
 const AI: React.FC = () => {
+  const { t, language } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I am your Quantitative AI Assistant. I can help you analyze markets, explain strategies, or generate Python code for new factors. How can I help you today?',
+      content: t('ai.welcome'),
       timestamp: new Date().toLocaleTimeString()
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Update welcome message when language changes
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].role === 'assistant') {
+        return [{
+          role: 'assistant',
+          content: t('ai.welcome'),
+          timestamp: new Date().toLocaleTimeString()
+        }];
+      }
+      return prev;
+    });
+  }, [language, t]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,7 +58,7 @@ const AI: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('http://localhost:8000/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -107,7 +123,7 @@ const AI: React.FC = () => {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request.',
+        content: t('ai.error'),
         timestamp: new Date().toLocaleTimeString()
       }]);
     } finally {
@@ -120,7 +136,7 @@ const AI: React.FC = () => {
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
         <Sparkles className="w-5 h-5 text-purple-600" />
-        <h2 className="font-semibold text-gray-800">AI Quantitative Assistant</h2>
+        <h2 className="font-semibold text-gray-800">{t('ai.title')}</h2>
       </div>
 
       {/* Messages Area */}
@@ -154,7 +170,7 @@ const AI: React.FC = () => {
                     <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
                  </div>
                  <div className="flex items-center">
-                    <span className="text-xs text-gray-400">Thinking...</span>
+                    <span className="text-xs text-gray-400">{t('ai.thinking')}</span>
                  </div>
             </div>
         )}
@@ -168,7 +184,7 @@ const AI: React.FC = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about strategies, code generation, or market analysis..."
+            placeholder={t('ai.placeholder')}
             className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm"
           />
           <button

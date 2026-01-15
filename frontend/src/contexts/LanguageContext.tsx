@@ -4,7 +4,7 @@ import { translations, Language, TranslationKey } from '../locales/translations'
 interface LanguageContextType {
   language: Language;
   toggleLanguage: () => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey | string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -25,8 +25,9 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     localStorage.setItem('app_language', newLang);
   };
 
-  const t = (key: TranslationKey): string => {
-    return translations[language][key] || key;
+  const t = (key: TranslationKey | string): string => {
+    const langTranslations = translations[language] as Record<string, string>;
+    return langTranslations[key] || key;
   };
 
   return (

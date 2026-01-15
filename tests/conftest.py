@@ -385,10 +385,14 @@ def progress_callback():
 @pytest.fixture(scope="function", autouse=True)
 def reset_data_provider():
     """每个测试后重置data_provider"""
-    from core.data_provider import data_provider
-    original_state = data_provider.is_logged_in
-    yield
-    data_provider.is_logged_in = original_state
+    try:
+        from data.baostock_provider import data_provider
+        original_state = data_provider.is_logged_in
+        yield
+        data_provider.is_logged_in = original_state
+    except ImportError:
+        # 如果导入失败，直接yield
+        yield
 
 
 @pytest.fixture
@@ -409,3 +413,28 @@ def benchmark_data():
         'scan_100_stocks': {'target_time': 30.0},  # 100只股票，30秒内完成
         'scan_300_stocks': {'target_time': 90.0},  # 300只股票，90秒内完成
     }
+
+# ============================================================================
+# API 测试 Fixtures
+# ============================================================================
+
+@pytest.fixture
+def anyio_backend():
+    """用于异步测试的后端"""
+    return "asyncio"
+
+
+@pytest.fixture
+async def app():
+    """FastAPI 应用实例"""
+    from backend.app.main import app as fastapi_app
+    return fastapi_app
+
+
+@pytest.fixture
+async def client(app):
+    """异步 HTTP 客户端"""
+    from httpx import AsyncClient
+    
+    async with AsyncClient(app=app, base_url="http://test") as async_client:
+        yield async_client

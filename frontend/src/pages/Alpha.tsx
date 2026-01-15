@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
-import { Search, Play, Activity, Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Play, Activity, Info, TrendingUp } from 'lucide-react';
+import { useTranslation } from '../contexts/LanguageContext';
 
 // Types
 interface AlphaFactor {
@@ -23,6 +24,7 @@ interface AlphaResult {
 }
 
 const Alpha: React.FC = () => {
+  const { t } = useTranslation();
   // State
   const [factors, setFactors] = useState<AlphaFactor[]>([]);
   const [selectedFactor, setSelectedFactor] = useState<AlphaFactor | null>(null);
@@ -45,7 +47,7 @@ const Alpha: React.FC = () => {
         }
       } catch (err) {
         console.error('Failed to fetch factors', err);
-        setError('Failed to load factor list.');
+        setError(t('alpha.loadFactorsFailed'));
       }
     };
     fetchFactors();
@@ -70,7 +72,7 @@ const Alpha: React.FC = () => {
       setResult(data as any);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || 'Calculation failed');
+      setError(err.response?.data?.detail || t('alpha.calculationFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -139,14 +141,14 @@ const Alpha: React.FC = () => {
       <div className="w-full md:w-80 flex-shrink-0 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-100px)]">
         <div className="flex items-center gap-2 mb-4">
           <Activity className="w-5 h-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Alpha Factors</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t('alpha.title')}</h2>
         </div>
 
         {/* Search - Placeholder for now */}
         <div className="relative mb-4">
           <input 
             type="text" 
-            placeholder="Search factors..." 
+            placeholder={t('alpha.searchFactors')}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
@@ -182,7 +184,7 @@ const Alpha: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
             <div className="flex-1 w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Target Stock</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('alpha.targetStock')}</label>
               <div className="flex gap-2">
                  <input
                   type="text"
@@ -202,7 +204,7 @@ const Alpha: React.FC = () => {
               }`}
             >
               <Play className="w-4 h-4" /> 
-              {isLoading ? 'Calculating...' : 'Calculate Alpha'}
+              {isLoading ? t('alpha.calculating') : t('alpha.calculate')}
             </button>
           </div>
           
@@ -210,7 +212,7 @@ const Alpha: React.FC = () => {
             <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-600 flex gap-2 items-start border border-gray-100">
               <Info className="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" />
               <div>
-                <span className="font-semibold text-gray-700">Formula/Logic: </span>
+                <span className="font-semibold text-gray-700">{t('alpha.formulaLogic')}: </span>
                 {selectedFactor.description}
               </div>
             </div>
@@ -227,20 +229,20 @@ const Alpha: React.FC = () => {
         {result && (
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col min-h-[400px]">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-gray-800">Analysis Result</h3>
+              <h3 className="text-lg font-semibold text-gray-800">{t('alpha.analysisResult')}</h3>
               <div className="flex gap-4 text-sm">
                 {result.data && result.data.length > 0 ? (
                   <>
                     <div className="flex items-center gap-1 text-gray-500">
-                      <TrendingUp className="w-4 h-4" /> Latest: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1]?.value?.toFixed(4) ?? 'N/A'}</span>
+                      <TrendingUp className="w-4 h-4" /> {t('alpha.latest')}: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1]?.value?.toFixed(4) ?? 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-1 text-gray-500">
-                      <span className="text-gray-400">|</span> Price: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1]?.close?.toFixed(2) ?? 'N/A'}</span>
+                      <span className="text-gray-400">|</span> {t('alpha.price')}: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1]?.close?.toFixed(2) ?? 'N/A'}</span>
                     </div>
                   </>
                 ) : (
                    <div className="text-yellow-600 flex items-center gap-1">
-                      <Info className="w-4 h-4" /> No data generated for this factor.
+                      <Info className="w-4 h-4" /> {t('alpha.noData')}
                    </div>
                 )}
               </div>
@@ -250,7 +252,7 @@ const Alpha: React.FC = () => {
                 {result.data && result.data.length > 0 ? (
                   <SimpleChart data={result.data} />
                 ) : (
-                  <div className="text-gray-400 text-sm">No chart data available</div>
+                  <div className="text-gray-400 text-sm">{t('alpha.noChartData')}</div>
                 )}
             </div>
 
@@ -259,9 +261,9 @@ const Alpha: React.FC = () => {
                 <table className="min-w-full text-sm text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                            <th className="px-4 py-2">Date</th>
-                            <th className="px-4 py-2">Close</th>
-                            <th className="px-4 py-2">Factor Value</th>
+                            <th className="px-4 py-2">{t('alpha.date')}</th>
+                            <th className="px-4 py-2">{t('alpha.close')}</th>
+                            <th className="px-4 py-2">{t('alpha.factorValue')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -278,13 +280,13 @@ const Alpha: React.FC = () => {
                         ) : (
                           <tr>
                             <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                              No records found after filtering.
+                              {t('alpha.noRecords')}
                             </td>
                           </tr>
                         )}
                     </tbody>
                 </table>
-                <p className="text-xs text-gray-400 mt-2 text-center">Showing last 5 records</p>
+                <p className="text-xs text-gray-400 mt-2 text-center">{t('alpha.showingLast5')}</p>
             </div>
           </div>
         )}

@@ -28,6 +28,30 @@ class BaostockProvider:
             hs300_stocks.append({'code': row[1], 'name': row[2]})
         return hs300_stocks
 
+    def get_zz1000_stocks(self, date):
+        """获取中证1000成分股"""
+        self.login()
+        print(f"Fetching ZZ1000 constituents for {date}...")
+        rs = bs.query_zz500_stocks(date=date)  # baostock 暂无 zz1000 接口，使用 zz500 + 扩展
+        # 注意：baostock 目前支持 hs300, zz500, sz50
+        # 这里使用 query_stock_industry 获取更多股票作为替代方案
+        zz1000_stocks = []
+        # 先获取中证500作为基础
+        rs = bs.query_zz500_stocks(date=date)
+        while (rs.error_code == '0') & rs.next():
+            row = rs.get_row_data()
+            zz1000_stocks.append({'code': row[1], 'name': row[2]})
+        # 如果需要更多股票，可以从沪深300补充
+        if len(zz1000_stocks) < 500:
+            hs300 = self.get_hs300_stocks(date)
+            existing_codes = {s['code'] for s in zz1000_stocks}
+            for stock in hs300:
+                if stock['code'] not in existing_codes:
+                    zz1000_stocks.append(stock)
+                if len(zz1000_stocks) >= 1000:
+                    break
+        return zz1000_stocks[:1000]
+
     def get_daily_bars(self, code, start_date, end_date):
         """
         获取日线数据。

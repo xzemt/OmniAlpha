@@ -21,13 +21,9 @@ markers = [
 addopts = [
     "-v",
     "--tb=short",
-    "--cov=.",
-    "--cov-report=term-missing",
-    "--cov-report=html:htmlcov",
-    "--cov-report=xml",
-    "--cov-config=.coveragerc",
     "-ra",
 ]
+
 
 # 警告过滤
 filterwarnings = [

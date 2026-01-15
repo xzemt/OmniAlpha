@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 from datetime import datetime, timedelta
 
-from core.data_provider import BaostockProvider
+from data.baostock_provider import BaostockProvider
 
 
 @pytest.mark.unit

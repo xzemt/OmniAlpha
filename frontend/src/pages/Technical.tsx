@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
-import { Play, Settings, Filter, Download, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Play, Settings, Filter, Download, AlertCircle, Loader2 } from 'lucide-react';
+import { useTranslation } from '../contexts/LanguageContext';
 
 interface Strategy {
   key: string;
@@ -25,10 +26,12 @@ interface LogMessage {
 }
 
 const Technical: React.FC = () => {
+  const { t } = useTranslation();
   // State
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [selectedStrategies, setSelectedStrategies] = useState<string[]>([]);
   const [poolType, setPoolType] = useState<string>('hs300');
+  const [customStocks, setCustomStocks] = useState<string>('');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   
   const [isScanning, setIsScanning] = useState(false);
@@ -52,7 +55,7 @@ const Technical: React.FC = () => {
         setStrategies(data as any);
       }
     } catch (error) {
-      addLog('error', 'Failed to load strategies.');
+      addLog('error', t('technical.loadStrategiesFailed'));
     }
   };
 
@@ -68,26 +71,47 @@ const Technical: React.FC = () => {
 
   const handleScan = async () => {
     if (selectedStrategies.length === 0) {
-      addLog('error', 'Please select at least one strategy.');
+      addLog('error', t('technical.selectStrategy'));
       return;
+    }
+
+    // 验证自定义股票池
+    let customPool: string[] | undefined;
+    if (poolType === 'custom') {
+      const codes = customStocks
+        .split(/[,\n\s]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
+      if (codes.length === 0) {
+        addLog('error', t('technical.enterStockCodes'));
+        return;
+      }
+      customPool = codes;
     }
 
     setIsScanning(true);
     setScanResults([]);
     setProgress(null);
-    addLog('info', 'Starting scan...');
+    addLog('info', t('technical.startingScan'));
 
     try {
-      const response = await fetch('/api/scan/', {
+      const requestBody: any = {
+        date,
+        strategies: selectedStrategies,
+        pool_type: poolType
+      };
+      
+      if (poolType === 'custom' && customPool) {
+        requestBody.custom_pool = customPool;
+      }
+
+      const response = await fetch('http://localhost:8000/api/scan/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          date,
-          strategies: selectedStrategies,
-          pool_type: poolType
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -127,11 +151,9 @@ const Technical: React.FC = () => {
             } else if (msg.type === 'match') {
               setScanResults(prev => [...prev, msg.data]);
             } else if (msg.type === 'error') {
-              addLog('error', `Error: ${msg.message}`);
+              addLog('error', `${t('error')}: ${msg.message}`);
             } else if (msg.type === 'done') {
-              addLog('success', `Scan complete. Found ${scanResults.length + (msg.type === 'match' ? 1 : 0)} matches.`); // scanResults is stale in closure? No, using functional update elsewhere. 
-              // Wait, inside while loop, scanResults is stale. 
-              // We rely on visual logs for completion.
+              addLog('success', `${t('technical.scanComplete')} ${scanResults.length + (msg.type === 'match' ? 1 : 0)} ${t('technical.matches')}`);
               setIsScanning(false);
             }
           } catch (e) {
@@ -141,7 +163,7 @@ const Technical: React.FC = () => {
       }
       
     } catch (error: any) {
-      addLog('error', `Scan failed: ${error.message}`);
+      addLog('error', `${t('technical.scanFailed')}: ${error.message}`);
       setIsScanning(false);
     } finally {
       setIsScanning(false);
@@ -157,13 +179,13 @@ const Technical: React.FC = () => {
       <div className="w-full md:w-80 flex-shrink-0 bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-fit">
         <div className="flex items-center gap-2 mb-4">
           <Settings className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Configuration</h2>
+          <h2 className="text-lg font-semibold text-gray-800">{t('technical.config')}</h2>
         </div>
 
         <div className="space-y-4">
           {/* Date Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Trading Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('technical.tradingDate')}</label>
             <input 
               type="date" 
               value={date} 
@@ -174,21 +196,36 @@ const Technical: React.FC = () => {
 
           {/* Pool Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Stock Pool</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('technical.stockPool')}</label>
             <select 
               value={poolType} 
               onChange={(e) => setPoolType(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="hs300">HS300 Index</option>
-              <option value="test">Test (First 20)</option>
-              {/* <option value="custom">Custom</option> */}
+              <option value="hs300">{t('technical.hs300')}</option>
+              <option value="zz1000">{t('technical.zz1000')}</option>
+              <option value="test">{t('technical.test')}</option>
+              <option value="custom">{t('technical.custom')}</option>
             </select>
           </div>
 
+          {/* Custom Stock Input */}
+          {poolType === 'custom' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('technical.customStocks')}</label>
+              <textarea
+                value={customStocks}
+                onChange={(e) => setCustomStocks(e.target.value)}
+                placeholder={t('technical.customStocksPlaceholder')}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-24 text-sm font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-1">{t('technical.customStocksHint')}</p>
+            </div>
+          )}
+
           {/* Strategies */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Strategies</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('technical.strategies')}</label>
             <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-100 rounded-md p-2 bg-gray-50">
               {strategies.map((strategy) => (
                 <div key={strategy.key} className="flex items-start gap-2">
@@ -205,7 +242,7 @@ const Technical: React.FC = () => {
                   </label>
                 </div>
               ))}
-              {strategies.length === 0 && <p className="text-sm text-gray-400">Loading strategies...</p>}
+              {strategies.length === 0 && <p className="text-sm text-gray-400">{t('technical.loadingStrategies')}</p>}
             </div>
           </div>
 
@@ -217,11 +254,11 @@ const Technical: React.FC = () => {
           >
             {isScanning ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Scanning...
+                <Loader2 className="w-4 h-4 animate-spin" /> {t('technical.scanning')}
               </>
             ) : (
               <>
-                <Play className="w-4 h-4" /> Start Scan
+                <Play className="w-4 h-4" /> {t('technical.startScan')}
               </>
             )}
           </button>
@@ -229,7 +266,7 @@ const Technical: React.FC = () => {
 
         {/* Mini Logs */}
         <div className="mt-6 border-t pt-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Activity Log</h3>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{t('technical.activityLog')}</h3>
             <div className="h-32 overflow-y-auto text-xs space-y-1 font-mono bg-gray-900 text-gray-300 p-2 rounded">
                 {logs.map((log, i) => (
                     <div key={i} className={`${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : ''}`}>
@@ -246,10 +283,10 @@ const Technical: React.FC = () => {
             {/* Header */}
             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-800">Scan Results</h2>
+                    <h2 className="text-lg font-semibold text-gray-800">{t('technical.scanResults')}</h2>
                     <p className="text-sm text-gray-500">
-                        {scanResults.length} stocks found 
-                        {progress && isScanning && ` • Scanned ${progress.current}/${progress.total}`}
+                        {scanResults.length} {t('technical.stocksFound')}
+                        {progress && isScanning && ` • ${t('technical.scanned')} ${progress.current}/${progress.total}`}
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -277,11 +314,11 @@ const Technical: React.FC = () => {
                 {scanResults.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400">
                         {isScanning ? (
-                            <p>Scanning in progress...</p>
+                            <p>{t('technical.scanningProgress')}</p>
                         ) : (
                             <>
                                 <AlertCircle className="w-12 h-12 mb-2 opacity-20" />
-                                <p>No results yet. Configure and start a scan.</p>
+                                <p>{t('technical.noResults')}</p>
                             </>
                         )}
                     </div>
@@ -289,10 +326,10 @@ const Technical: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Strategies Matched</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('technical.code')}</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('technical.name')}</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('technical.strategiesMatched')}</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('technical.details')}</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -312,7 +349,7 @@ const Technical: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <Link to={`/stock/${result.code}`} className="text-blue-600 hover:text-blue-900">View</Link>
+                                        <Link to={`/stock/${result.code}`} className="text-blue-600 hover:text-blue-900">{t('technical.view')}</Link>
                                     </td>
                                 </tr>
                             ))}
