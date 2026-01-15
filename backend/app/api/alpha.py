@@ -44,7 +44,7 @@ async def get_alpha_factors():
 async def calculate_alpha(
     code: str = Query(..., description="Stock code (e.g., sh.600000)"),
     factor: str = Query(..., description="Factor key (e.g., alpha001)"),
-    days: int = Query(365, description="Number of days of history to use")
+    days: int = Query(730, description="Number of days of history to use")
 ) -> Dict[str, Any]:
     """
     Calculate a specific alpha factor for a stock.
@@ -86,6 +86,9 @@ async def calculate_alpha(
             "close": df['close'],
             "value": result_series
         })
+        
+        # Replace Infinity with NaN
+        result_df.replace([np.inf, -np.inf], np.nan, inplace=True)
         
         # Filter out NaNs (common in beginning of series due to rolling windows)
         result_df = result_df.dropna()

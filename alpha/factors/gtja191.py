@@ -7,7 +7,9 @@ from scipy.stats import rankdata
 
 def Log(sr):
     """计算自然对数"""
-    return np.log(sr)
+    # Replace 0 or negative with a small epsilon or NaN to avoid -inf/nan
+    return np.log(sr.replace(0, np.nan)) # Or add epsilon: np.log(sr + 1e-9)
+
 
 def Rank(sr):
     """
@@ -17,11 +19,11 @@ def Rank(sr):
     但在当前的选股器架构中，数据是逐只股票传入的（Time-Series 模式），无法获取全市场数据。
     
     为了保证公式可运行且具备参考意义，此处将其适配为【时间序列排名】。
-    逻辑：计算当前值在过去 250 个交易日（约一年）中的分位数 (0~1)。
+    逻辑：计算当前值在过去 100 个交易日（约半年）中的分位数 (0~1)。
     这代表了“当前值相对于自身历史水平的高低”。
     """
-    # 使用过去 250 天的数据进行滚动排名，归一化到 0-1
-    return sr.rolling(window=250, min_periods=10).apply(lambda x: rankdata(x)[-1]/len(x), raw=True)
+    # 使用过去 100 天的数据进行滚动排名，归一化到 0-1
+    return sr.rolling(window=100, min_periods=10).apply(lambda x: rankdata(x)[-1]/len(x), raw=True)
 
 def Delta(sr, period):
     """一阶差分: sr - Delay(sr, period)"""

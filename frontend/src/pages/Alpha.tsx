@@ -229,17 +229,29 @@ const Alpha: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-gray-800">Analysis Result</h3>
               <div className="flex gap-4 text-sm">
-                <div className="flex items-center gap-1 text-gray-500">
-                   <TrendingUp className="w-4 h-4" /> Latest: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1].value.toFixed(4)}</span>
-                </div>
-                <div className="flex items-center gap-1 text-gray-500">
-                   <span className="text-gray-400">|</span> Price: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1].close.toFixed(2)}</span>
-                </div>
+                {result.data && result.data.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <TrendingUp className="w-4 h-4" /> Latest: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1]?.value?.toFixed(4) ?? 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <span className="text-gray-400">|</span> Price: <span className="font-mono font-medium text-gray-900">{result.data[result.data.length-1]?.close?.toFixed(2) ?? 'N/A'}</span>
+                    </div>
+                  </>
+                ) : (
+                   <div className="text-yellow-600 flex items-center gap-1">
+                      <Info className="w-4 h-4" /> No data generated for this factor.
+                   </div>
+                )}
               </div>
             </div>
 
             <div className="flex-1 flex items-center justify-center bg-gray-50 rounded border border-gray-100 p-4 overflow-hidden">
-                <SimpleChart data={result.data} />
+                {result.data && result.data.length > 0 ? (
+                  <SimpleChart data={result.data} />
+                ) : (
+                  <div className="text-gray-400 text-sm">No chart data available</div>
+                )}
             </div>
 
             {/* Simple Stats Table */}
@@ -253,15 +265,23 @@ const Alpha: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {result.data.slice().reverse().slice(0, 5).map((row, idx) => (
-                            <tr key={idx} className="bg-white border-b hover:bg-gray-50">
-                                <td className="px-4 py-2 font-mono">{row.date}</td>
-                                <td className="px-4 py-2 font-mono">{row.close.toFixed(2)}</td>
-                                <td className={`px-4 py-2 font-mono font-medium ${row.value > 0 ? 'text-red-600' : row.value < 0 ? 'text-green-600' : ''}`}>
-                                    {row.value.toFixed(6)}
-                                </td>
-                            </tr>
-                        ))}
+                        {result.data && result.data.length > 0 ? (
+                          result.data.slice().reverse().slice(0, 5).map((row, idx) => (
+                              <tr key={idx} className="bg-white border-b hover:bg-gray-50">
+                                  <td className="px-4 py-2 font-mono">{row.date}</td>
+                                  <td className="px-4 py-2 font-mono">{row.close?.toFixed(2) ?? '-'}</td>
+                                  <td className={`px-4 py-2 font-mono font-medium ${row.value > 0 ? 'text-red-600' : row.value < 0 ? 'text-green-600' : ''}`}>
+                                      {typeof row.value === 'number' ? row.value.toFixed(6) : 'N/A'}
+                                  </td>
+                              </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                              No records found after filtering.
+                            </td>
+                          </tr>
+                        )}
                     </tbody>
                 </table>
                 <p className="text-xs text-gray-400 mt-2 text-center">Showing last 5 records</p>
